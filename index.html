@@ -363,103 +363,7 @@
 
   .send-btn svg { width: 16px; height: 16px; }
 
-  /* Config overlay */
-  #config-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.85);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 100;
-    padding: 2rem;
-  }
 
-  .config-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 2rem;
-    max-width: 500px;
-    width: 100%;
-    animation: slideUp 0.3s ease;
-  }
-
-  .config-title {
-    font-family: var(--font-mono);
-    font-size: 1rem;
-    color: var(--accent);
-    margin-bottom: 0.4rem;
-  }
-
-  .config-desc {
-    font-size: 0.82rem;
-    color: var(--text-muted);
-    margin-bottom: 1.5rem;
-    line-height: 1.6;
-  }
-
-  .config-desc a {
-    color: var(--accent);
-    text-decoration: none;
-  }
-
-  .config-field { margin-bottom: 1rem; }
-
-  .config-textarea {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 0.7rem 0.9rem;
-    color: var(--text);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    resize: vertical;
-    outline: none;
-    min-height: 130px;
-    line-height: 1.5;
-    transition: border-color 0.2s;
-  }
-
-  .config-textarea:focus { border-color: var(--accent); }
-
-  .config-error {
-    font-size: 0.78rem;
-    color: #ff6b6b;
-    margin-top: 0.4rem;
-    min-height: 1rem;
-  }
-
-  .config-btn {
-    width: 100%;
-    padding: 0.75rem;
-    background: var(--accent);
-    color: #0f0f0f;
-    border: none;
-    border-radius: 10px;
-    font-family: var(--font-sans);
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.15s;
-    margin-top: 0.5rem;
-  }
-
-  .config-btn:hover { opacity: 0.9; }
-
-  .config-skip {
-    width: 100%;
-    padding: 0.6rem;
-    background: none;
-    color: var(--text-muted);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    font-family: var(--font-sans);
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: color 0.15s;
-    margin-top: 0.5rem;
-  }
-
-  .config-skip:hover { color: var(--text); }
 
   @media (max-width: 480px) {
     .msg { max-width: 88%; }
@@ -470,33 +374,7 @@
 </head>
 <body>
 
-<!-- CONFIG OVERLAY (aparece só se não tiver config salva) -->
-<div id="config-overlay">
-  <div class="config-card">
-    <div class="config-title">// configuração firebase</div>
-    <p class="config-desc">
-      Para o chat funcionar entre vários computadores, você precisa de um banco de dados Firebase gratuito.<br><br>
-      1. Acesse <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a><br>
-      2. Crie um projeto → Realtime Database → Iniciar no <strong>modo de teste</strong><br>
-      3. Em Configurações do projeto → Seus apps → Web → copie o objeto <code>firebaseConfig</code> e cole abaixo.
-    </p>
-    <div class="config-field">
-      <div class="login-label">cole o firebaseConfig aqui (JSON)</div>
-      <textarea class="config-textarea" id="firebase-config-input" placeholder='{
-  "apiKey": "...",
-  "authDomain": "...",
-  "databaseURL": "...",
-  "projectId": "...",
-  "storageBucket": "...",
-  "messagingSenderId": "...",
-  "appId": "..."
-}'></textarea>
-      <div class="config-error" id="config-error"></div>
-    </div>
-    <button class="config-btn" onclick="saveConfig()">Salvar e continuar</button>
-    <button class="config-skip" onclick="useDemo()">Usar modo demo (só neste navegador)</button>
-  </div>
-</div>
+
 
 <!-- LOGIN -->
 <div id="login-screen" style="display:none">
@@ -545,10 +423,20 @@
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
   import { getDatabase, ref, push, onValue, serverTimestamp, onDisconnect, set, remove } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
-  let db = null;
+  const firebaseConfig = {
+    apiKey: "AIzaSyAAM0MjDIzkWGGBwf9jZothOYRgV5rs4AQ",
+    authDomain: "chat-cupimxas.firebaseapp.com",
+    databaseURL: "https://chat-cupimxas-default-rtdb.firebaseio.com",
+    projectId: "chat-cupimxas",
+    storageBucket: "chat-cupimxas.firebasestorage.app",
+    messagingSenderId: "464237186263",
+    appId: "1:464237186263:web:43c1ba11d602424c3ab492"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
   let currentUser = null;
-  let demoMode = false;
-  let demoMessages = [];
   let presenceRef = null;
 
   const COLORS = ['#e8ff4a','#4affe8','#ff4aaa','#4a88ff','#ff884a','#aa4aff','#4aff88'];
@@ -559,66 +447,20 @@
     return COLORS[h];
   }
 
-  function initials(name) {
-    return name.slice(0, 2).toUpperCase();
-  }
+  function initials(name) { return name.slice(0, 2).toUpperCase(); }
 
   function fmtTime(ts) {
-    const d = new Date(ts);
-    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
 
-  // ── CONFIG ──
-  const savedConfig = localStorage.getItem('firebase_config');
-  if (savedConfig) {
-    try {
-      initFirebase(JSON.parse(savedConfig));
-      document.getElementById('config-overlay').style.display = 'none';
-      showLogin();
-    } catch(e) {
-      showConfigOverlay();
-    }
-  } else {
-    showConfigOverlay();
-  }
-
-  window.saveConfig = function() {
-    const raw = document.getElementById('firebase-config-input').value.trim();
-    const err = document.getElementById('config-error');
-    try {
-      const cfg = JSON.parse(raw);
-      if (!cfg.databaseURL) throw new Error('faltando databaseURL');
-      localStorage.setItem('firebase_config', JSON.stringify(cfg));
-      initFirebase(cfg);
-      document.getElementById('config-overlay').style.display = 'none';
-      showLogin();
-      err.textContent = '';
-    } catch(e) {
-      err.textContent = 'JSON inválido ou faltando campos. Verifique e tente de novo.';
-    }
-  };
-
-  window.useDemo = function() {
-    demoMode = true;
-    document.getElementById('config-overlay').style.display = 'none';
-    showLogin();
-  };
-
-  function initFirebase(cfg) {
-    const app = initializeApp(cfg);
-    db = getDatabase(app);
-  }
-
-  function showConfigOverlay() {
-    document.getElementById('config-overlay').style.display = 'flex';
-  }
+  // Mostrar login direto
+  showLogin();
 
   function showLogin() {
     document.getElementById('login-screen').style.display = 'flex';
     setTimeout(() => document.getElementById('username-input').focus(), 100);
   }
 
-  // ── LOGIN ──
   window.doLogin = function() {
     const val = document.getElementById('username-input').value.trim();
     const err = document.getElementById('login-error');
@@ -636,71 +478,46 @@
     sessionStorage.removeItem('chat_user');
     currentUser = null;
     document.getElementById('chat-screen').style.display = 'none';
-    document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('messages').innerHTML = '';
     document.getElementById('username-input').value = '';
+    showLogin();
   };
-
-  // Check session on load
-  const savedUser = sessionStorage.getItem('chat_user');
-  if (savedUser && (db || demoMode)) {
-    // will be handled after firebase init above
-  }
 
   function startChat() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('chat-screen').style.display = 'flex';
     document.getElementById('current-user-display').textContent = currentUser;
 
-    if (demoMode) {
-      setupDemo();
-    } else {
-      setupFirebase();
-    }
-
-    document.getElementById('msg-input').addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-    });
-
-    // Auto-resize textarea
-    const inp = document.getElementById('msg-input');
-    inp.addEventListener('input', () => {
-      inp.style.height = 'auto';
-      inp.style.height = Math.min(inp.scrollHeight, 120) + 'px';
-    });
-  }
-
-  function setupFirebase() {
     // Presence
     const presPath = `presence/${currentUser}_${Date.now()}`;
     presenceRef = ref(db, presPath);
     set(presenceRef, { name: currentUser, ts: Date.now() });
     onDisconnect(presenceRef).remove();
 
-    // Online count
-    const presenceRootRef = ref(db, 'presence');
-    onValue(presenceRootRef, snap => {
+    onValue(ref(db, 'presence'), snap => {
       const count = snap.exists() ? Object.keys(snap.val()).length : 0;
       document.getElementById('online-count').textContent = count + ' online';
     });
 
-    // Messages
-    const msgsRef = ref(db, 'messages');
-    onValue(msgsRef, snap => {
+    onValue(ref(db, 'messages'), snap => {
       const msgs = document.getElementById('messages');
       msgs.innerHTML = '';
+      lastDay = '';
       if (!snap.exists()) return;
       const all = Object.values(snap.val()).sort((a,b) => (a.ts||0)-(b.ts||0));
       all.forEach(m => appendMessage(m));
       msgs.scrollTop = msgs.scrollHeight;
     });
-  }
 
-  function setupDemo() {
-    document.getElementById('online-count').textContent = '1 online';
-    demoMessages.forEach(m => appendMessage(m));
-    const msgs = document.getElementById('messages');
-    msgs.scrollTop = msgs.scrollHeight;
+    document.getElementById('msg-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+
+    const inp = document.getElementById('msg-input');
+    inp.addEventListener('input', () => {
+      inp.style.height = 'auto';
+      inp.style.height = Math.min(inp.scrollHeight, 120) + 'px';
+    });
   }
 
   window.sendMessage = function() {
@@ -709,17 +526,7 @@
     if (!text || !currentUser) return;
     inp.value = '';
     inp.style.height = 'auto';
-
-    const msg = { user: currentUser, text, ts: Date.now() };
-
-    if (demoMode) {
-      demoMessages.push(msg);
-      appendMessage(msg);
-      const msgs = document.getElementById('messages');
-      msgs.scrollTop = msgs.scrollHeight;
-    } else {
-      push(ref(db, 'messages'), { ...msg, ts: serverTimestamp() });
-    }
+    push(ref(db, 'messages'), { user: currentUser, text, ts: serverTimestamp() });
   };
 
   let lastDay = '';
@@ -739,17 +546,14 @@
 
     const isOwn = m.user === currentUser;
     const color = getColor(m.user);
-
     const wrap = document.createElement('div');
     wrap.className = 'msg' + (isOwn ? ' own' : '');
-
     wrap.innerHTML = `
-      <div class="avatar" style="background:${color}22; color:${color}; border:1px solid ${color}44">${initials(m.user)}</div>
+      <div class="avatar" style="background:${color}22;color:${color};border:1px solid ${color}44">${initials(m.user)}</div>
       <div class="msg-content">
         <div class="msg-meta">${isOwn ? '' : m.user + ' · '}${fmtTime(m.ts)}</div>
         <div class="msg-bubble">${escHtml(m.text)}</div>
       </div>`;
-
     msgs.appendChild(wrap);
   }
 
@@ -757,7 +561,6 @@
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
   }
 
-  // Enter on login
   document.getElementById('username-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') doLogin();
   });
