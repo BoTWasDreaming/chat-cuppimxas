@@ -339,11 +339,11 @@ let pendingAvatar = null, pendingImage = null;
 
 window.toggleAuthMode = function() {
   isLoginMode = !isLoginMode;
-  document.getElementById('register-fields').style.display = isLoginMode?'none':'';
-  document.getElementById('auth-sub').textContent = isLoginMode?'bem-vindo de volta':'crie sua conta';
-  document.getElementById('auth-btn').textContent = isLoginMode?'Entrar':'Criar conta';
-  document.getElementById('auth-toggle-text').textContent = isLoginMode?'Não tem conta?':'Já tem conta?';
-  document.getElementById('auth-toggle-link').textContent = isLoginMode?'Cadastrar':'Entrar';
+  document.getElementById('register-fields').style.display = isLoginMode ? 'none' : '';
+  document.getElementById('auth-sub').textContent = isLoginMode ? 'bem-vindo de volta' : 'crie sua conta';
+  document.getElementById('auth-btn').textContent = isLoginMode ? 'Entrar' : 'Criar conta';
+  document.getElementById('auth-toggle-text').textContent = isLoginMode ? 'Não tem conta?' : 'Já tem conta?';
+  document.getElementById('auth-toggle-link').textContent = isLoginMode ? 'Cadastrar' : 'Entrar';
   document.getElementById('auth-err').textContent = '';
 };
 
