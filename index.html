@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chat</title>
+  <link rel="icon" href="logo.jpg" type="image/jpeg">
   <link
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet">
@@ -1553,6 +1554,14 @@
     let allUsers = {}, allPresence = {}, currentChannel = 'geral', isDM = false;
     let msgListener = null, pendingAvatar = null, pendingImage = null, mentionPopupIdx = -1;
 
+    // u2500u2500 UNREAD / TITLE NOTIFICATION u2500u2500
+    let unreadCount = 0;
+    const BASE_TITLE = document.title;
+    function setUnread(n) { unreadCount = n; document.title = n > 0 ? `(${n}) ${BASE_TITLE}` : BASE_TITLE; }
+    function clearUnread() { setUnread(0); }
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) clearUnread(); });
+    window.addEventListener("focus", () => clearUnread());
+
     // ── BIND ALL EVENTS (no inline onclick needed) ──
     function bindEvents() {
       // auth
@@ -1842,6 +1851,7 @@
     function switchChannel(channelId) {
       isDM = false;
       currentChannel = channelId;
+      clearUnread();
       $('chat-channel-name').textContent = channelId;
       $('chat-channel-hash').textContent = '#';
       document.querySelectorAll('.channel-item').forEach(i => i.classList.remove('active'));
@@ -1853,15 +1863,26 @@
     function loadMessages(channelId) {
       if (msgListener) msgListener();
       $('messages').innerHTML = '';
-      let lastDay = '';
+      clearUnread();
+      let lastDay = '', lastKnownCount = 0, initialized = false;
       msgListener = onValue(ref(db, `messages/${channelId}`), snap => {
         const container = $('messages');
         const wasBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
         container.innerHTML = ''; lastDay = '';
-        if (!snap.exists()) return;
+        if (!snap.exists()) { initialized = true; lastKnownCount = 0; return; }
         const all = Object.entries(snap.val()).map(([k, v]) => ({ ...v, _key: k })).sort((a, b) => (a.ts || 0) - (b.ts || 0));
         all.forEach(m => { lastDay = appendMessage(m, lastDay, channelId); });
         if (wasBottom || all.length < 2) container.scrollTop = container.scrollHeight;
+
+        // Detecta mensagens novas após carregamento inicial
+        if (initialized) {
+          const newMsgs = all.slice(lastKnownCount).filter(m => m.user !== currentUser.username && !m.system);
+          if (newMsgs.length > 0 && (document.hidden || !document.hasFocus())) {
+            setUnread(unreadCount + newMsgs.length);
+          }
+        }
+        initialized = true;
+        lastKnownCount = all.length;
       });
     }
 
@@ -2090,42 +2111,10 @@
         const addBtn = document.createElement('button');
         addBtn.className = 'btn-ghost';
         addBtn.style.marginTop = '0';
-
-        // Verificar estado atual da amizade/solicitação
-        const [friendSnap, reqSnap] = await Promise.all([
-          get(ref(db, `friends/${currentUser.username}/${username}`)),
-          get(ref(db, 'friend_requests'))
-        ]);
-
-        if (friendSnap.exists()) {
-          addBtn.textContent = 'Já são amigos ✓';
-          addBtn.disabled = true;
-        } else {
-          // Checar se já existe solicitação pendente
-          let jaEnviou = false;
-          if (reqSnap.exists()) {
-            Object.values(reqSnap.val()).forEach(r => {
-              if (r.from === currentUser.username && r.to === username && r.status === 'pending') jaEnviou = true;
-            });
-          }
-          if (jaEnviou) {
-            addBtn.textContent = 'Solicitação enviada!';
-            addBtn.disabled = true;
-          } else {
-            addBtn.textContent = 'Adicionar amigo';
-          }
-        }
-
+        addBtn.textContent = 'Adicionar amigo';
         addBtn.onclick = async () => {
-          if (addBtn.disabled) return;
-          try {
-            await push(ref(db, 'friend_requests'), { from: currentUser.username, to: username, status: 'pending', ts: Date.now() });
-            addBtn.textContent = 'Solicitação enviada!'; addBtn.disabled = true;
-          } catch (e) {
-            addBtn.textContent = 'Erro ao enviar!';
-            console.error('Erro ao enviar solicitação de amizade:', e);
-            setTimeout(() => { addBtn.textContent = 'Adicionar amigo'; }, 2500);
-          }
+          await push(ref(db, 'friend_requests'), { from: currentUser.username, to: username, status: 'pending', ts: Date.now() });
+          addBtn.textContent = 'Solicitação enviada!'; addBtn.disabled = true;
         };
 
         actions.appendChild(dmBtn);
@@ -2264,27 +2253,10 @@
       err.textContent = ''; ok.textContent = '';
       if (!target) { err.textContent = 'Digite um usuário.'; return; }
       if (target === currentUser.username) { err.textContent = 'Você não pode adicionar a si mesmo.'; return; }
-      try {
-        const [userSnap, friendSnap, reqSnap] = await Promise.all([
-          get(ref(db, `users/${target}`)),
-          get(ref(db, `friends/${currentUser.username}/${target}`)),
-          get(ref(db, 'friend_requests'))
-        ]);
-        if (!userSnap.exists()) { err.textContent = 'Usuário não encontrado.'; return; }
-        if (friendSnap.exists()) { err.textContent = 'Vocês já são amigos.'; return; }
-        if (reqSnap.exists()) {
-          let jaEnviou = false;
-          Object.values(reqSnap.val()).forEach(r => {
-            if (r.from === currentUser.username && r.to === target && r.status === 'pending') jaEnviou = true;
-          });
-          if (jaEnviou) { err.textContent = 'Solicitação já enviada.'; return; }
-        }
-        await push(ref(db, 'friend_requests'), { from: currentUser.username, to: target, status: 'pending', ts: Date.now() });
-        ok.textContent = 'Solicitação enviada!'; $('add-friend-inp').value = '';
-      } catch (e) {
-        err.textContent = 'Erro ao enviar solicitação. Tente novamente.';
-        console.error('Erro ao enviar solicitação:', e);
-      }
+      const snap = await get(ref(db, `users/${target}`));
+      if (!snap.exists()) { err.textContent = 'Usuário não encontrado.'; return; }
+      await push(ref(db, 'friend_requests'), { from: currentUser.username, to: target, status: 'pending', ts: Date.now() });
+      ok.textContent = 'Solicitação enviada!'; $('add-friend-inp').value = '';
     }
 
     // ── RECOVER ──
