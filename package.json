@@ -1,0 +1,12 @@
+{
+  "name": "cuppimxas-chat",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check app.js && node --check notifications.js",
+    "test": "node tests/chat.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.65.1"
+  }
+}
